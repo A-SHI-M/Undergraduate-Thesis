@@ -1,0 +1,7 @@
+README.md
+setup.py
+src/Anomaly-Detection/__init__.py
+src/Anomaly_Detection.egg-info/PKG-INFO
+src/Anomaly_Detection.egg-info/SOURCES.txt
+src/Anomaly_Detection.egg-info/dependency_links.txt
+src/Anomaly_Detection.egg-info/top_level.txt

@@ -1,0 +1,17 @@
+# Core
+numpy==1.26.4
+
+# TensorFlow
+tensorflow==2.16.1
+
+# Visualization
+matplotlib==3.8.4
+
+# ML utilities
+scikit-learn==1.4.2
+
+# Imaging
+Pillow==10.3.0
+opencv-python==4.9.0.80
+
+-e .

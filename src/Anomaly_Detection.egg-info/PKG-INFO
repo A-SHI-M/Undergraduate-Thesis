@@ -1,0 +1,16 @@
+Metadata-Version: 2.4
+Name: Anomaly-Detection
+Version: 0.0.0
+Summary: A small python package for Undergraduate Thesis
+Home-page: https://github.com/A-SHI-M/Undergraduate-Thesis
+Author: A-SHI-M
+Author-email: 1647dasashim1647@gmail.com
+Project-URL: Bug Tracker, https://github.com/A-SHI-M/Undergraduate-Thesis/issues
+Dynamic: author
+Dynamic: author-email
+Dynamic: description
+Dynamic: home-page
+Dynamic: project-url
+Dynamic: summary
+
+# Undergraduate-Thesis
