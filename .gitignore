@@ -143,6 +143,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+thesis/
 
 # Spyder project settings
 .spyderproject
@@ -208,3 +209,5 @@ __marimo__/
 
 .vscode/
 *.egg-info/
+artifacts/
+thesis/

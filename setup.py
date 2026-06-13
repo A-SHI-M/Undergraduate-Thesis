@@ -8,7 +8,7 @@ __version__ = "0.0.0"
 
 REPO_NAME = "Undergraduate-Thesis"
 AUTHOR_USER_NAME = "A-SHI-M"
-SRC_REPO = "Anomaly-Detection"
+SRC_REPO = "Anomaly_Detection"
 AUTHOR_EMAIL = "1647dasashim1647@gmail.com"
 
 
