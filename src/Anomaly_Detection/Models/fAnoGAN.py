@@ -32,7 +32,10 @@ def build_fanogan_generator(
     return Model(inputs, outputs, name="fanogan_generator")
 
 
-def build_fanogan_discriminator(img_shape: tuple = IMG_SHAPE) -> Model:
+def build_fanogan_discriminator(
+    img_shape: tuple = IMG_SHAPE,
+    lr: float = LEARNING_RATE,
+) -> Model:
     inputs = Input(shape=img_shape)
     x = Conv2D(32, (4, 4), strides=2, padding='same')(inputs)
     x = LeakyReLU(0.2)(x)
@@ -48,7 +51,12 @@ def build_fanogan_discriminator(img_shape: tuple = IMG_SHAPE) -> Model:
     features = Flatten()(x)
     x = Dropout(0.5)(features)
     validity = Dense(1, activation='sigmoid')(x)
-    return Model(inputs, [validity, features], name="fanogan_discriminator")
+    model = Model(inputs, [validity, features], name="fanogan_discriminator")
+    model.compile(
+        optimizer=Adam(learning_rate=lr, beta_1=0.5),
+        loss=['binary_crossentropy', 'mse'],
+    )
+    return model
 
 
 def build_fanogan_dcgan(
