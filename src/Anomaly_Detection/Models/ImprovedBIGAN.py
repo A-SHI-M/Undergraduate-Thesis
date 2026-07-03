@@ -116,7 +116,11 @@ def build_generator(
     return Model(inputs, outputs, name="generator")
 
 
-def build_discriminator(img_shape: tuple = IMG_SHAPE, latent_dim: int = LATENT_DIM) -> Model:
+def build_discriminator(
+    img_shape: tuple = IMG_SHAPE,
+    latent_dim: int = LATENT_DIM,
+    lr: float = LEARNING_RATE,
+) -> Model:
     img_input = Input(shape=img_shape, name="disc_img_input")
     z_input = Input(shape=(latent_dim,), name="disc_z_input")
 
@@ -146,7 +150,9 @@ def build_discriminator(img_shape: tuple = IMG_SHAPE, latent_dim: int = LATENT_D
     combined = Dropout(0.5)(combined)
     validity = Dense(1, activation='sigmoid', name="validity")(combined)
 
-    return Model([img_input, z_input], validity, name="discriminator")
+    model = Model([img_input, z_input], validity, name="discriminator")
+    model.compile(optimizer=Adam(learning_rate=lr, beta_1=0.5), loss='binary_crossentropy')
+    return model
 
 
 def build_bigan(
