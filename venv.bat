@@ -24,9 +24,11 @@ echo import site >> python312._pth
 
 cd ..
 
-python-3.12.10\scripts\virtualenv.exe -p python-3.12.10\python.exe virtualenv
+python-3.12.10\scripts\virtualenv.exe -p python-3.12.10\python.exe venv
 
-venv\scripts\activate
+echo "Activate virtual environment by the following path"
+
+echo "venv\scripts\activate"
 
 
 
