@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Brain MRI Anomaly Detection</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px;
+      color: #1a1a2e;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .subtitle {
+      color: #555;
+      font-size: 0.95rem;
+      margin-bottom: 36px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      padding: 36px;
+      width: 100%;
+      max-width: 520px;
+    }
+
+    /* ── drop zone ── */
+    .drop-zone {
+      border: 2px dashed #c0c0d0;
+      border-radius: 12px;
+      padding: 40px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+    .drop-zone:hover, .drop-zone.over {
+      border-color: #4f46e5;
+      background: #f5f3ff;
+    }
+    .drop-zone input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    .drop-icon { font-size: 2.5rem; margin-bottom: 10px; }
+    .drop-label { color: #555; font-size: 0.9rem; }
+    .drop-label span { color: #4f46e5; font-weight: 600; }
+
+    /* ── preview ── */
+    #preview-wrap {
+      display: none;
+      margin-top: 20px;
+      text-align: center;
+    }
+    #preview {
+      max-width: 100%;
+      max-height: 260px;
+      border-radius: 10px;
+      border: 1px solid #e0e0e0;
+    }
+    #filename {
+      margin-top: 8px;
+      font-size: 0.82rem;
+      color: #888;
+    }
+
+    /* ── model selector ── */
+    .field { margin-top: 20px; }
+    .field label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: #333;
+    }
+    select {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #d0d0d8;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      background: #fafafa;
+      color: #1a1a2e;
+      appearance: none;
+      cursor: pointer;
+    }
+    select:focus { outline: 2px solid #4f46e5; border-color: transparent; }
+
+    /* ── submit ── */
+    button[type="submit"] {
+      margin-top: 24px;
+      width: 100%;
+      padding: 13px;
+      background: #4f46e5;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button[type="submit"]:hover { background: #3730a3; }
+    button[type="submit"]:disabled { background: #a5a5b5; cursor: not-allowed; }
+
+    /* ── result ── */
+    .result {
+      margin-top: 28px;
+      padding: 20px 24px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .result.normal  { background: #f0fdf4; border: 1.5px solid #86efac; }
+    .result.anomaly { background: #fff1f2; border: 1.5px solid #fca5a5; }
+
+    .result-icon { font-size: 2.2rem; flex-shrink: 0; }
+    .result-label {
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+    .result.normal  .result-label { color: #16a34a; }
+    .result.anomaly .result-label { color: #dc2626; }
+
+    .result-meta { font-size: 0.82rem; color: #555; margin-top: 4px; }
+
+    .error-box {
+      margin-top: 20px;
+      padding: 14px 18px;
+      background: #fff1f2;
+      border: 1.5px solid #fca5a5;
+      border-radius: 10px;
+      color: #dc2626;
+      font-size: 0.88rem;
+    }
+
+    .spinner {
+      display: none;
+      margin-top: 20px;
+      text-align: center;
+      color: #888;
+      font-size: 0.9rem;
+    }
+    .spinner::before {
+      content: '';
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 2px solid #c0c0d0;
+      border-top-color: #4f46e5;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+  <h1>Brain MRI Anomaly Detection</h1>
+  <p class="subtitle">Upload a scan to check for anomalies using a trained model.</p>
+
+  <div class="card">
+    <form id="predict-form" enctype="multipart/form-data">
+
+      <!-- drop zone -->
+      <div class="drop-zone" id="drop-zone">
+        <div class="drop-icon">🧠</div>
+        <div class="drop-label">Drag &amp; drop an MRI image here or <span>browse</span></div>
+        <input type="file" name="image" id="file-input" accept="image/*" required />
+      </div>
+
+      <div id="preview-wrap">
+        <img id="preview" src="" alt="Preview" />
+        <div id="filename"></div>
+      </div>
+
+      <!-- model selector -->
+      <div class="field">
+        <label for="model-type">Model</label>
+        <select name="model_type" id="model-type">
+          <option value="bigan">Improved BiGAN (proposed)</option>
+          <option value="fc_ae">FC Autoencoder</option>
+          <option value="cnn_ae">CNN Autoencoder</option>
+          <option value="vae">VAE</option>
+          <option value="beta_vae">Beta-VAE</option>
+          <option value="cvae">Conditional VAE</option>
+          <option value="vqvae">VQ-VAE</option>
+        </select>
+      </div>
+
+      <button type="submit" id="submit-btn">Analyse</button>
+    </form>
+
+    <div class="spinner" id="spinner">Analysing image…</div>
+    <div id="result-area"></div>
+  </div>
+
+  <script>
+    const fileInput  = document.getElementById('file-input');
+    const dropZone   = document.getElementById('drop-zone');
+    const previewWrap = document.getElementById('preview-wrap');
+    const preview    = document.getElementById('preview');
+    const filenameEl = document.getElementById('filename');
+    const form       = document.getElementById('predict-form');
+    const spinner    = document.getElementById('spinner');
+    const resultArea = document.getElementById('result-area');
+    const submitBtn  = document.getElementById('submit-btn');
+
+    // preview on file select
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      preview.src = URL.createObjectURL(file);
+      filenameEl.textContent = file.name;
+      previewWrap.style.display = 'block';
+    });
+
+    // drag-over highlight
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+    dropZone.addEventListener('dragleave', ()  => dropZone.classList.remove('over'));
+    dropZone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropZone.classList.remove('over');
+      const file = e.dataTransfer.files[0];
+      if (!file) return;
+      // inject into file input
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      fileInput.files = dt.files;
+      fileInput.dispatchEvent(new Event('change'));
+    });
+
+    // submit
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      resultArea.innerHTML = '';
+      spinner.style.display = 'block';
+      submitBtn.disabled = true;
+
+      const data = new FormData(form);
+
+      try {
+        const res  = await fetch('/predict', { method: 'POST', body: data });
+        const json = await res.json();
+
+        if (!res.ok) {
+          resultArea.innerHTML = `<div class="error-box">⚠️ ${json.error || 'Unexpected error'}</div>`;
+          return;
+        }
+
+        const isAnomaly = json.is_anomaly;
+        const score     = json.anomaly_score.toFixed(5);
+        const threshold = json.threshold.toFixed(5);
+
+        resultArea.innerHTML = `
+          <div class="result ${isAnomaly ? 'anomaly' : 'normal'}">
+            <div class="result-icon">${isAnomaly ? '🔴' : '🟢'}</div>
+            <div>
+              <div class="result-label">${isAnomaly ? 'Anomaly detected' : 'No anomaly detected'}</div>
+              <div class="result-meta">
+                Anomaly score: <strong>${score}</strong> &nbsp;|&nbsp;
+                Threshold: <strong>${threshold}</strong>
+              </div>
+            </div>
+          </div>`;
+      } catch (err) {
+        resultArea.innerHTML = `<div class="error-box">⚠️ Could not reach the server.</div>`;
+      } finally {
+        spinner.style.display = 'none';
+        submitBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

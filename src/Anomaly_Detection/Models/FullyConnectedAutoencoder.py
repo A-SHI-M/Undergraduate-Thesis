@@ -1,23 +1,20 @@
 from tensorflow.keras.layers import Input, Dense
 from tensorflow.keras.models import Model
-from Anomaly_Detection.constant import IMG_SIZE
+from Anomaly_Detection.constant import INPUT_DIM
 
 
-input_dim = IMG_SIZE[0] * IMG_SIZE[1]
-# 1. Fully Connected Autoencoder
-input_fc = Input(shape=(input_dim,))
-encoded_fc = Dense(1024, activation='relu')(input_fc)
-encoded_fc = Dense(512, activation='relu')(encoded_fc)
-encoded_fc = Dense(256, activation='relu')(encoded_fc)
+def build_fc_autoencoder(input_dim: int = INPUT_DIM) -> Model:
+    inputs = Input(shape=(input_dim,))
+    x = Dense(1024, activation='relu')(inputs)
+    x = Dense(512, activation='relu')(x)
+    x = Dense(256, activation='relu')(x)
+    x = Dense(128, activation='relu')(x)
 
+    x = Dense(256, activation='relu')(x)
+    x = Dense(512, activation='relu')(x)
+    x = Dense(1024, activation='relu')(x)
+    outputs = Dense(input_dim, activation='sigmoid')(x)
 
-encoded_fc = Dense(128, activation='relu')(encoded_fc)
-
-
-decoded_fc = Dense(256, activation='relu')(encoded_fc)
-decoded_fc = Dense(512, activation='relu')(decoded_fc)
-decoded_fc = Dense(1024, activation='relu')(decoded_fc)
-decoded_fc = Dense(input_dim, activation='sigmoid')(decoded_fc)
-
-autoencoder_fc = Model(input_fc, decoded_fc)
-autoencoder_fc.compile(optimizer='adam', loss='mse')
+    model = Model(inputs, outputs, name="fc_autoencoder")
+    model.compile(optimizer='adam', loss='mse')
+    return model

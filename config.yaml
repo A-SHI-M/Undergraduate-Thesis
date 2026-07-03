@@ -1,0 +1,25 @@
+artifacts_root: artifacts
+
+datasets:
+  brain_mri:
+    display_name: BRAIN_MRI
+    source_normal_dir: Dataset/BRAIN MRI/Healthy
+    source_abnormal_dir: Dataset/BRAIN MRI/Tumor
+
+data_ingestion:
+  root_dir: artifacts/{dataset}/data_ingestion
+  normal_dir: artifacts/{dataset}/data_ingestion/healthy
+  abnormal_dir: artifacts/{dataset}/data_ingestion/tumor
+
+model_trainer:
+  root_dir: artifacts/{dataset}/model_trainer
+  models_dir: artifacts/{dataset}/model_trainer/saved_models
+  extra_models_dir: trainedModels/{dataset}
+
+model_evaluation:
+  root_dir: resultAnalysis/{dataset}
+  comparison_dir: resultAnalysis/{dataset}/comparison
+
+ablation_analysis:
+  root_dir: ablationAnalysis/{dataset}
+  comparison_dir: ablationAnalysis/{dataset}/comparison

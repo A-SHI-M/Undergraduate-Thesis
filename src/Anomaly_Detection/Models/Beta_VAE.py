@@ -1,23 +1,29 @@
-# 4. Beta-VAE
-# Parameters
-latent_dim_beta = 128
-beta_value = 10.0
+from tensorflow.keras.layers import Input, Dense, Lambda
+from tensorflow.keras.models import Model
+from Anomaly_Detection.constant import INPUT_DIM, LATENT_DIM, BETA_VALUE
+from Anomaly_Detection.Models.VAE import VAELossLayer, sampling
 
-# encoder
-inputs_beta = Input(shape=(input_dim,))
-x = Dense(1024, activation='relu')(inputs_beta)
-x = Dense(512, activation='relu')(x)
-z_mean_beta = Dense(latent_dim_beta)(x)
-z_log_var_beta = Dense(latent_dim_beta)(x)
-z_beta = Lambda(sampling)([z_mean_beta, z_log_var_beta])
 
-# decoder
-x = Dense(512, activation='relu')(z_beta)
-x = Dense(1024, activation='relu')(x)
-outputs_beta = Dense(input_dim, activation='sigmoid')(x)
+def build_beta_vae(
+    input_dim: int = INPUT_DIM,
+    latent_dim: int = LATENT_DIM,
+    beta: float = BETA_VALUE,
+) -> Model:
+    inputs = Input(shape=(input_dim,))
+    x = Dense(1024, activation='relu')(inputs)
+    x = Dense(512, activation='relu')(x)
+    z_mean = Dense(latent_dim)(x)
+    z_log_var = Dense(latent_dim)(x)
+    z = Lambda(sampling, name="z_sampling")([z_mean, z_log_var])
 
-beta_vae_output = VAELossLayer(beta=beta_value)([inputs_beta, outputs_beta, z_mean_beta, z_log_var_beta])
+    x = Dense(512, activation='relu')(z)
+    x = Dense(1024, activation='relu')(x)
+    outputs = Dense(input_dim, activation='sigmoid')(x)
 
-# Beta-VAE model
-beta_vae = Model(inputs_beta, beta_vae_output)
-beta_vae.compile(optimizer='adam')
+    beta_vae_output = VAELossLayer(beta=beta, input_dim=input_dim)(
+        [inputs, outputs, z_mean, z_log_var]
+    )
+
+    model = Model(inputs, beta_vae_output, name="beta_vae")
+    model.compile(optimizer='adam')
+    return model

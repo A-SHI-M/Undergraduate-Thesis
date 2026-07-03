@@ -1,25 +1,30 @@
 import tensorflow as tf
 from tensorflow.keras.layers import Input, Dense, Lambda, Layer
 from tensorflow.keras.models import Model
-from Anomaly_Detection.constant import IMG_SIZE
+from Anomaly_Detection.constant import INPUT_DIM, LATENT_DIM
 
-input_dim = IMG_SIZE[0] * IMG_SIZE[1]
-# Custom VAE loss layer
+
 class VAELossLayer(Layer):
-    def __init__(self, beta=1.0, **kwargs):
+    def __init__(self, beta: float = 1.0, input_dim: int = INPUT_DIM, **kwargs):
         self.beta = beta
-        super(VAELossLayer, self).__init__(**kwargs)
+        self.input_dim = input_dim
+        super().__init__(**kwargs)
 
     def call(self, inputs):
         x, x_decoded, z_mean, z_log_var = inputs
-        reconstruction_loss = tf.reduce_mean(tf.keras.losses.binary_crossentropy(x, x_decoded)) * input_dim
+        reconstruction_loss = (
+            tf.reduce_mean(tf.keras.losses.binary_crossentropy(x, x_decoded)) * self.input_dim
+        )
         kl_loss = -0.5 * tf.reduce_mean(1 + z_log_var - tf.square(z_mean) - tf.exp(z_log_var))
-        total_loss = reconstruction_loss + self.beta * kl_loss
-        self.add_loss(total_loss)
+        self.add_loss(reconstruction_loss + self.beta * kl_loss)
         return x_decoded
 
-# 3. Variational Autoencoder
-# sampling function
+    def get_config(self):
+        config = super().get_config()
+        config.update({"beta": self.beta, "input_dim": self.input_dim})
+        return config
+
+
 def sampling(args):
     z_mean, z_log_var = args
     batch = tf.shape(z_mean)[0]
@@ -27,25 +32,21 @@ def sampling(args):
     epsilon = tf.random.normal(shape=(batch, dim))
     return z_mean + tf.exp(0.5 * z_log_var) * epsilon
 
-# Parameters
-latent_dim = 128
 
-# encoder
-inputs_vae = Input(shape=(input_dim,))
-x = Dense(1024, activation='relu')(inputs_vae)
-x = Dense(512, activation='relu')(x)
-z_mean = Dense(latent_dim)(x)
-z_log_var = Dense(latent_dim)(x)
-z = Lambda(sampling)([z_mean, z_log_var])
+def build_vae(input_dim: int = INPUT_DIM, latent_dim: int = LATENT_DIM, beta: float = 0.01) -> Model:
+    inputs = Input(shape=(input_dim,))
+    x = Dense(1024, activation='relu')(inputs)
+    x = Dense(512, activation='relu')(x)
+    z_mean = Dense(latent_dim)(x)
+    z_log_var = Dense(latent_dim)(x)
+    z = Lambda(sampling, name="z_sampling")([z_mean, z_log_var])
 
-# decoder
-x = Dense(512, activation='relu')(z)
-x = Dense(1024, activation='relu')(x)
-outputs_vae = Dense(input_dim, activation='sigmoid')(x)
+    x = Dense(512, activation='relu')(z)
+    x = Dense(1024, activation='relu')(x)
+    outputs = Dense(input_dim, activation='sigmoid')(x)
 
-# custom loss layer
-vae_output = VAELossLayer(beta=0.01)([inputs_vae, outputs_vae, z_mean, z_log_var])
+    vae_output = VAELossLayer(beta=beta, input_dim=input_dim)([inputs, outputs, z_mean, z_log_var])
 
-# VAE model
-vae = Model(inputs_vae, vae_output)
-vae.compile(optimizer='adam')
+    model = Model(inputs, vae_output, name="vae")
+    model.compile(optimizer='adam')
+    return model

@@ -1,0 +1,68 @@
+data:
+  img_size: [128, 128]
+  test_size: 0.2
+  random_state: 42
+  dummy_normal_samples: 100
+  dummy_abnormal_samples: 50
+
+fc_ae:
+  epochs: 1
+  batch_size: 16
+  validation_split: 0.1
+
+cnn_ae:
+  epochs: 2
+  batch_size: 16
+  validation_split: 0.1
+
+vae:
+  epochs: 2
+  batch_size: 16
+  validation_split: 0.1
+  latent_dim: 128
+  beta: 0.01
+
+beta_vae:
+  epochs: 2
+  batch_size: 16
+  validation_split: 0.1
+  latent_dim: 128
+  beta: 10.0
+
+cvae:
+  epochs: 2
+  batch_size: 16
+  validation_split: 0.1
+  latent_dim: 128
+  n_conditions: 3
+
+vqvae:
+  epochs: 2
+  batch_size: 16
+  validation_split: 0.1
+  num_embeddings: 128
+  embedding_dim: 64
+  commitment_cost: 0.25
+
+bigan:
+  pretrain_epochs: 150
+  bigan_epochs: 500
+  disc_train_interval: 5
+  learning_rate: 0.00005
+
+bigan_normal:
+  pretrain_epochs: 100
+  bigan_epochs: 300
+  disc_train_interval: 5
+  learning_rate: 0.00005
+
+ganomaly:
+  epochs: 300
+  batch_size: 16
+  learning_rate: 0.0002
+
+anogan:
+  epochs: 300
+  encoder_epochs: 200
+  batch_size: 16
+  learning_rate: 0.0002
