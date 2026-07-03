@@ -176,8 +176,10 @@ class TrainingPipeline:
         bigan = build_bigan(generator, discriminator, encoder)
         reconstruction_model = build_reconstruction_model(encoder, generator)
 
+        prefix = "improved_bigan" if variant == "full" else f"bigan_{variant}"
         BiGANTrainer(self._bigan_cfg).train(
             encoder, generator, discriminator, bigan, reconstruction_model, x_train,
+            prefix=prefix,
         )
 
         name = "Improved-BiGAN" if variant == "full" else f"BiGAN-{variant}"
@@ -222,6 +224,7 @@ class TrainingPipeline:
         )
         BiGANTrainer(normal_cfg).train(
             encoder, generator, discriminator, bigan, reconstruction_model, x_train,
+            prefix="bigan",
         )
 
         name = "BiGAN"

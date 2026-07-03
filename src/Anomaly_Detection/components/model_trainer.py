@@ -76,6 +76,7 @@ class BiGANTrainer:
         reconstruction_model: Model,
         x_train: np.ndarray,
         latent_dim: int = LATENT_DIM,
+        prefix: str = "bigan",
     ) -> dict:
         n = len(x_train)
         lr = self.config.learning_rate
@@ -135,14 +136,14 @@ class BiGANTrainer:
             if (epoch + 1) % 50 == 0:
                 print(f"  [P2 {epoch+1}/{self.config.bigan_epochs}] recon={r_loss:.4f}")
 
-        self._save(encoder, generator, discriminator)
+        self._save(encoder, generator, discriminator, prefix)
         return losses
 
-    def _save(self, encoder: Model, generator: Model, discriminator: Model):
+    def _save(self, encoder: Model, generator: Model, discriminator: Model, prefix: str = "bigan"):
         for model, name in [
-            (encoder, "encoder"),
-            (generator, "generator"),
-            (discriminator, "discriminator"),
+            (encoder, f"{prefix}_encoder"),
+            (generator, f"{prefix}_generator"),
+            (discriminator, f"{prefix}_discriminator"),
         ]:
             for save_dir in (self.config.models_dir, self.config.extra_models_dir):
                 path = save_dir / f"{name}.keras"
