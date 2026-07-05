@@ -8,7 +8,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-from Anomaly_Detection.pipeline.training_pipeline import TrainingPipeline
+from Anomaly_Detection.pipeline.stage_03_model_training import TrainingPipeline
 
 MODELS = ["fc_ae", "cnn_ae", "vae", "beta_vae", "cvae", "vqvae", "bigan", "all"]
 

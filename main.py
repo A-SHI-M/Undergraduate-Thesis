@@ -8,8 +8,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-from Anomaly_Detection.pipeline.data_transformation_pipeline import DataIngestionPipeline
-from Anomaly_Detection.pipeline.training_pipeline import TrainingPipeline
+from Anomaly_Detection.pipeline.stage_01_data_ingestion import DataIngestionPipeline
+from Anomaly_Detection.pipeline.stage_03_model_training import TrainingPipeline
 from Anomaly_Detection.utils.visualizations import Visualizer
 from Anomaly_Detection.config.configuaration import ConfigurationManager
 
@@ -92,7 +92,7 @@ def run_dataset(dataset_name: str):
 def main():
     # Discover all configured datasets from config.yaml
     root_cfg = ConfigurationManager()
-    all_datasets = list(root_cfg.config["datasets"].keys())
+    all_datasets = list(root_cfg.config["data_ingestion"]["datasets"].keys())
     logger.info(f"Configured datasets: {all_datasets}")
 
     for dataset_name in all_datasets:

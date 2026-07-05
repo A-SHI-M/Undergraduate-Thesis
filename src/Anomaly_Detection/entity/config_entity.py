@@ -13,11 +13,10 @@ class DatasetConfig:
 
 @dataclass(frozen=True)
 class DataIngestionConfig:
-    root_dir: Path
-    source_normal_dir: Path
-    source_abnormal_dir: Path
+    download_dir: Path
     normal_dir: Path
     abnormal_dir: Path
+    kaggle_dataset: str
     img_size: Tuple[int, int]
     test_size: float
     random_state: int

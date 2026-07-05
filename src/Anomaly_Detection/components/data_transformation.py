@@ -11,8 +11,6 @@ class DataTransformation:
     def __init__(self, config: DataIngestionConfig):
         self.config = config
 
-    # ── image loading ─────────────────────────────────────────────────────────
-
     def _load_images(self, directory: str) -> np.ndarray:
         extensions = ("*.jpg", "*.jpeg", "*.png", "*.bmp")
         paths = []
@@ -20,7 +18,7 @@ class DataTransformation:
             paths.extend(glob.glob(os.path.join(directory, "**", ext), recursive=True))
 
         images = []
-        for path in paths:
+        for path in sorted(paths):
             try:
                 img = Image.open(path).convert("L").resize(self.config.img_size)
                 images.append(np.array(img, dtype=np.float32) / 255.0)
@@ -50,41 +48,23 @@ class DataTransformation:
             img[rx: rx + size, ry: ry + size] = 1.0
         return normals
 
-    # ── Stage 01: transform raw images → save as JPG ────────────────────────────
-
-    def transform(self):
-        def _save_images(images: np.ndarray, out_dir: str, label: str):
-            os.makedirs(out_dir, exist_ok=True)
-            for i, img_arr in enumerate(images):
-                img = Image.fromarray((img_arr * 255).astype(np.uint8), mode="L")
-                img.save(os.path.join(out_dir, f"{label}_{i:04d}.jpg"))
-            print(f"Saved {len(images)} {label} images → {out_dir}")
-
-        normal_images = self._load_images(str(self.config.source_normal_dir))
-        abnormal_images = self._load_images(str(self.config.source_abnormal_dir))
-
-        if len(normal_images) == 0:
-            print("Source normal images not found — generating dummy data.")
-            normal_images = self._create_dummy_normal(self.config.dummy_normal_samples)
-
-        if len(abnormal_images) == 0:
-            print("Source abnormal images not found — generating dummy data.")
-            abnormal_images = self._create_dummy_abnormal(self.config.dummy_abnormal_samples)
-
-        _save_images(normal_images, str(self.config.normal_dir), "healthy")
-        _save_images(abnormal_images, str(self.config.abnormal_dir), "tumor")
-
-    # ── Training: load processed JPGs → return arrays ─────────────────────────
-
     def initiate(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        normal_images = self._load_images(str(self.config.normal_dir))
+        """Load images from Datasets/{dataset}/normal and abnormal, return train/test splits."""
+        normal_images   = self._load_images(str(self.config.normal_dir))
         abnormal_images = self._load_images(str(self.config.abnormal_dir))
 
         if len(normal_images) == 0:
-            print("Processed images not found — run Stage 01 first, or generating dummy data.")
+            print(
+                f"No images found in {self.config.normal_dir} — "
+                "generating dummy normal data."
+            )
             normal_images = self._create_dummy_normal(self.config.dummy_normal_samples)
 
         if len(abnormal_images) == 0:
+            print(
+                f"No images found in {self.config.abnormal_dir} — "
+                "generating dummy abnormal data."
+            )
             abnormal_images = self._create_dummy_abnormal(self.config.dummy_abnormal_samples)
 
         x_train, x_test_normal = train_test_split(
@@ -93,16 +73,16 @@ class DataTransformation:
             random_state=self.config.random_state,
         )
 
-        _, x_test_tumor = train_test_split(
+        _, x_test_abnormal = train_test_split(
             abnormal_images,
             test_size=self.config.test_size,
             random_state=self.config.random_state,
         )
 
-        x_test = np.concatenate([x_test_normal, x_test_tumor])
+        x_test = np.concatenate([x_test_normal, x_test_abnormal])
         y_test = np.concatenate([
             np.zeros(len(x_test_normal)),
-            np.ones(len(x_test_tumor)),
+            np.ones(len(x_test_abnormal)),
         ])
 
         print(f"Train: {x_train.shape}  |  Test: {x_test.shape}  |  Labels: {y_test.shape}")

@@ -1,15 +1,17 @@
 artifacts_root: artifacts
 
-datasets:
-  brain_mri:
-    display_name: BRAIN_MRI
-    source_normal_dir: Dataset/BRAIN MRI/Healthy
-    source_abnormal_dir: Dataset/BRAIN MRI/Tumor
-
 data_ingestion:
-  root_dir: artifacts/{dataset}/data_ingestion
-  normal_dir: artifacts/{dataset}/data_ingestion/healthy
-  abnormal_dir: artifacts/{dataset}/data_ingestion/tumor
+  download_dir: Datasets/{dataset}
+  datasets:
+    brain_mri:
+      display_name: BRAIN_MRI
+      kaggle_dataset: navoneel/brain-mri-images-for-brain-tumor-detection
+    strawberry_leaf:
+      display_name: STRAWBERRY_LEAF
+      kaggle_dataset: ashimdj89/plant-village-strawberry
+    mvtec_ad_bottle:
+      display_name: MVTEC_AD_BOTTLE
+      kaggle_dataset: ashimdj89/mvtec-bottle
 
 model_trainer:
   root_dir: artifacts/{dataset}/model_trainer

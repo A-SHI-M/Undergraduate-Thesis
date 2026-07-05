@@ -3,7 +3,6 @@ from pathlib import Path
 from Anomaly_Detection.constant import CONFIG_FILE_PATH, PARAMS_FILE_PATH
 from Anomaly_Detection.utils import create_directories
 from Anomaly_Detection.entity.config_entity import (
-    DatasetConfig,
     DataIngestionConfig,
     ModelTrainerConfig,
     BiGANTrainerConfig,
@@ -24,12 +23,14 @@ class ConfigurationManager:
         with open(params_filepath) as f:
             self.params = yaml.safe_load(f)
 
-        # Resolve active dataset
-        datasets = self.config["datasets"]
+        # Dataset registry lives inside data_ingestion.datasets
+        datasets = self.config["data_ingestion"]["datasets"]
         ds_key = dataset_name or list(datasets.keys())[0]
         if ds_key not in datasets:
-            raise ValueError(f"Dataset '{ds_key}' not found in config.yaml. "
-                             f"Available: {list(datasets.keys())}")
+            raise ValueError(
+                f"Dataset '{ds_key}' not found in config.yaml. "
+                f"Available: {list(datasets.keys())}"
+            )
         ds = datasets[ds_key]
         self.dataset_name = ds_key
         self.display_name = ds["display_name"]
@@ -39,31 +40,23 @@ class ConfigurationManager:
     def _resolve(self, template: str) -> str:
         return template.replace("{dataset}", self.display_name)
 
-    def get_dataset_config(self) -> DatasetConfig:
-        ds = self.config["datasets"][self.dataset_name]
-        return DatasetConfig(
-            name=self.dataset_name,
-            display_name=self.display_name,
-            source_normal_dir=Path(ds["source_normal_dir"]),
-            source_abnormal_dir=Path(ds["source_abnormal_dir"]),
-        )
-
     def get_data_ingestion_config(self) -> DataIngestionConfig:
         cfg = self.config["data_ingestion"]
-        ds = self.config["datasets"][self.dataset_name]
-        p = self.params["data"]
+        ds  = cfg["datasets"][self.dataset_name]
+        p   = self.params["data"]
 
-        root = self._resolve(cfg["root_dir"])
-        normal = self._resolve(cfg["normal_dir"])
-        abnormal = self._resolve(cfg["abnormal_dir"])
-        create_directories([root, normal, abnormal])
+        download_dir = Path(self._resolve(cfg["download_dir"]))
+        normal_dir   = download_dir / "normal"
+        abnormal_dir = download_dir / "abnormal"
+        kaggle_dataset = ds.get("kaggle_dataset", "")
+
+        create_directories([download_dir])
 
         return DataIngestionConfig(
-            root_dir=Path(root),
-            source_normal_dir=Path(ds["source_normal_dir"]),
-            source_abnormal_dir=Path(ds["source_abnormal_dir"]),
-            normal_dir=Path(normal),
-            abnormal_dir=Path(abnormal),
+            download_dir=download_dir,
+            normal_dir=normal_dir,
+            abnormal_dir=abnormal_dir,
+            kaggle_dataset=kaggle_dataset,
             img_size=tuple(p["img_size"]),
             test_size=float(p["test_size"]),
             random_state=int(p["random_state"]),
