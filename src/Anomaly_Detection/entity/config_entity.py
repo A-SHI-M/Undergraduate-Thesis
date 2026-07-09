@@ -14,12 +14,19 @@ class DatasetConfig:
 @dataclass(frozen=True)
 class DataIngestionConfig:
     download_dir: Path
+    kaggle_dataset: str
+
+
+@dataclass(frozen=True)
+class DataTransformationConfig:
+    root_dir: Path
     normal_dir: Path
     abnormal_dir: Path
-    kaggle_dataset: str
     img_size: Tuple[int, int]
     test_size: float
     random_state: int
+    target_normal: int
+    target_abnormal: int
     dummy_normal_samples: int
     dummy_abnormal_samples: int
 

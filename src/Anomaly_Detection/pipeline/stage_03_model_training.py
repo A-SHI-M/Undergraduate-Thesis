@@ -45,7 +45,7 @@ class TrainingPipeline:
         self.cfg = ConfigurationManager(dataset_name=dataset_name)
         self._eval_cfg = self.cfg.get_model_evaluation_config()
         self._ablation_cfg = self.cfg.get_ablation_config()
-        self._data_cfg = self.cfg.get_data_ingestion_config()
+        self._data_cfg = self.cfg.get_data_transformation_config()
         self._bigan_cfg = self.cfg.get_bigan_trainer_config()
         self._viz = Visualizer()
 

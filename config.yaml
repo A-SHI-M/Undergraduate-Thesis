@@ -13,6 +13,19 @@ data_ingestion:
       display_name: MVTEC_AD_BOTTLE
       kaggle_dataset: ashimdj89/mvtec-bottle
 
+data_transformation:
+  root_dir: artifacts/data_transformation/{dataset}
+  datasets:
+    brain_mri:
+      normal_subdir: "no"
+      abnormal_subdir: "yes"
+    strawberry_leaf:
+      normal_subdir: Strawberry___healthy
+      abnormal_subdir: Strawberry___Leaf_scorch
+    mvtec_ad_bottle:
+      normal_subdir: good
+      abnormal_subdir: broken
+
 model_trainer:
   root_dir: artifacts/{dataset}/model_trainer
   models_dir: artifacts/{dataset}/model_trainer/saved_models

@@ -2,6 +2,8 @@ data:
   img_size: [128, 128]
   test_size: 0.2
   random_state: 42
+  target_normal: 2000
+  target_abnormal: 400
   dummy_normal_samples: 100
   dummy_abnormal_samples: 50
 

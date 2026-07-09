@@ -4,6 +4,7 @@ from Anomaly_Detection.constant import CONFIG_FILE_PATH, PARAMS_FILE_PATH
 from Anomaly_Detection.utils import create_directories
 from Anomaly_Detection.entity.config_entity import (
     DataIngestionConfig,
+    DataTransformationConfig,
     ModelTrainerConfig,
     BiGANTrainerConfig,
     ModelEvaluationConfig,
@@ -43,23 +44,34 @@ class ConfigurationManager:
     def get_data_ingestion_config(self) -> DataIngestionConfig:
         cfg = self.config["data_ingestion"]
         ds  = cfg["datasets"][self.dataset_name]
-        p   = self.params["data"]
-
         download_dir = Path(self._resolve(cfg["download_dir"]))
-        normal_dir   = download_dir / "normal"
-        abnormal_dir = download_dir / "abnormal"
-        kaggle_dataset = ds.get("kaggle_dataset", "")
-
         create_directories([download_dir])
-
         return DataIngestionConfig(
             download_dir=download_dir,
+            kaggle_dataset=ds.get("kaggle_dataset", ""),
+        )
+
+    def get_data_transformation_config(self) -> DataTransformationConfig:
+        di_cfg = self.config["data_ingestion"]
+        dt_cfg = self.config["data_transformation"]
+        dt_ds  = dt_cfg["datasets"][self.dataset_name]
+        p      = self.params["data"]
+
+        download_dir = Path(self._resolve(di_cfg["download_dir"]))
+        root_dir     = Path(self._resolve(dt_cfg["root_dir"]))
+        normal_dir   = download_dir / dt_ds["normal_subdir"]
+        abnormal_dir = download_dir / dt_ds["abnormal_subdir"]
+        create_directories([root_dir])
+
+        return DataTransformationConfig(
+            root_dir=root_dir,
             normal_dir=normal_dir,
             abnormal_dir=abnormal_dir,
-            kaggle_dataset=kaggle_dataset,
             img_size=tuple(p["img_size"]),
             test_size=float(p["test_size"]),
             random_state=int(p["random_state"]),
+            target_normal=int(p["target_normal"]),
+            target_abnormal=int(p["target_abnormal"]),
             dummy_normal_samples=int(p["dummy_normal_samples"]),
             dummy_abnormal_samples=int(p["dummy_abnormal_samples"]),
         )

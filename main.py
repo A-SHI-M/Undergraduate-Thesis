@@ -9,6 +9,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 from Anomaly_Detection.pipeline.stage_01_data_ingestion import DataIngestionPipeline
+from Anomaly_Detection.pipeline.stage_02_data_transformation import DataTransformationPipeline
 from Anomaly_Detection.pipeline.stage_03_model_training import TrainingPipeline
 from Anomaly_Detection.utils.visualizations import Visualizer
 from Anomaly_Detection.config.configuaration import ConfigurationManager
@@ -19,13 +20,18 @@ def run_dataset(dataset_name: str):
     logger.info(f"Dataset: {dataset_name}")
     logger.info(f"{'='*60}")
 
-    # Stage 1 — Data preparation
-    logger.info(">>>>>> Stage 1: Data Transformation <<<<<<")
+    # Stage 1 — Download raw data
+    logger.info(">>>>>> Stage 1: Data Ingestion <<<<<<")
     DataIngestionPipeline(dataset_name=dataset_name).run()
     logger.info(">>>>>> Stage 1 complete <<<<<<")
 
-    # Stage 2 — Train & evaluate all models
-    logger.info(">>>>>> Stage 2: Training all models <<<<<<")
+    # Stage 2 — Transform & save processed data
+    logger.info(">>>>>> Stage 2: Data Transformation <<<<<<")
+    DataTransformationPipeline(dataset_name=dataset_name).run()
+    logger.info(">>>>>> Stage 2 complete <<<<<<")
+
+    # Stage 3 — Train & evaluate all models
+    logger.info(">>>>>> Stage 3: Training all models <<<<<<")
     pipeline = TrainingPipeline(dataset_name=dataset_name)
     cfg = pipeline.cfg
     eval_cfg = cfg.get_model_evaluation_config()
@@ -65,25 +71,25 @@ def run_dataset(dataset_name: str):
     logger.info("Training Improved BiGAN")
     results["Improved-BiGAN"] = pipeline.run_bigan(variant="full")
 
-    logger.info(">>>>>> Stage 2 complete <<<<<<")
+    logger.info(">>>>>> Stage 3 complete <<<<<<")
 
-    # Stage 3 — Overall comparison plots
-    logger.info(">>>>>> Stage 3: Comparison plots <<<<<<")
+    # Stage 4 — Overall comparison plots
+    logger.info(">>>>>> Stage 4: Comparison plots <<<<<<")
     comp_dir = Path(eval_cfg.comparison_dir)
     comp_dir.mkdir(parents=True, exist_ok=True)
     viz.plot_comparison(results, comp_dir)
     viz.plot_roc_comparison(results, comp_dir)
-    logger.info(">>>>>> Stage 3 complete <<<<<<")
-
-    # Stage 4 — T-SNE latent space
-    logger.info(">>>>>> Stage 4: T-SNE latent space <<<<<<")
-    pipeline.run_tsne(model_store, x_test, y_test)
     logger.info(">>>>>> Stage 4 complete <<<<<<")
 
-    # Stage 5 — Ablation study
-    logger.info(">>>>>> Stage 5: Ablation study <<<<<<")
-    pipeline.run_ablation()
+    # Stage 5 — T-SNE latent space
+    logger.info(">>>>>> Stage 5: T-SNE latent space <<<<<<")
+    pipeline.run_tsne(model_store, x_test, y_test)
     logger.info(">>>>>> Stage 5 complete <<<<<<")
+
+    # Stage 6 — Ablation study
+    logger.info(">>>>>> Stage 6: Ablation study <<<<<<")
+    pipeline.run_ablation()
+    logger.info(">>>>>> Stage 6 complete <<<<<<")
 
     logger.info(f"Results saved to resultAnalysis/{cfg.display_name}/ "
                 f"and ablationAnalysis/{cfg.display_name}/")
