@@ -1,7 +1,10 @@
+import sys
 import yaml
 from pathlib import Path
 from Anomaly_Detection.constant import CONFIG_FILE_PATH, PARAMS_FILE_PATH
 from Anomaly_Detection.utils import create_directories
+from Anomaly_Detection.logger import logger
+from Anomaly_Detection.exception import AnomalyDetectionException
 from Anomaly_Detection.entity.config_entity import (
     DataIngestionConfig,
     DataTransformationConfig,
@@ -19,24 +22,26 @@ class ConfigurationManager:
         config_filepath: Path = CONFIG_FILE_PATH,
         params_filepath: Path = PARAMS_FILE_PATH,
     ):
-        with open(config_filepath) as f:
-            self.config = yaml.safe_load(f)
-        with open(params_filepath) as f:
-            self.params = yaml.safe_load(f)
+        try:
+            with open(config_filepath) as f:
+                self.config = yaml.safe_load(f)
+            with open(params_filepath) as f:
+                self.params = yaml.safe_load(f)
 
-        # Dataset registry lives inside data_ingestion.datasets
-        datasets = self.config["data_ingestion"]["datasets"]
-        ds_key = dataset_name or list(datasets.keys())[0]
-        if ds_key not in datasets:
-            raise ValueError(
-                f"Dataset '{ds_key}' not found in config.yaml. "
-                f"Available: {list(datasets.keys())}"
-            )
-        ds = datasets[ds_key]
-        self.dataset_name = ds_key
-        self.display_name = ds["display_name"]
-
-        create_directories([self.config["artifacts_root"]])
+            datasets = self.config["data_ingestion"]["datasets"]
+            ds_key = dataset_name or list(datasets.keys())[0]
+            if ds_key not in datasets:
+                raise ValueError(
+                    f"Dataset '{ds_key}' not found in config.yaml. "
+                    f"Available: {list(datasets.keys())}"
+                )
+            ds = datasets[ds_key]
+            self.dataset_name = ds_key
+            self.display_name = ds["display_name"]
+            create_directories([self.config["artifacts_root"]])
+            logger.info(f"ConfigurationManager loaded for dataset: {self.dataset_name}")
+        except Exception as e:
+            raise AnomalyDetectionException(e, sys) from e
 
     def _resolve(self, template: str) -> str:
         return template.replace("{dataset}", self.display_name)
@@ -75,6 +80,14 @@ class ConfigurationManager:
             dummy_normal_samples=int(p["dummy_normal_samples"]),
             dummy_abnormal_samples=int(p["dummy_abnormal_samples"]),
         )
+
+    def get_model_dirs(self):
+        cfg = self.config["model_trainer"]
+        root   = Path(self._resolve(cfg["root_dir"]))
+        models = Path(self._resolve(cfg["models_dir"]))
+        extra  = Path(self._resolve(cfg["extra_models_dir"]))
+        create_directories([root, models, extra])
+        return root, models, extra
 
     def get_model_trainer_config(self, model_name: str) -> ModelTrainerConfig:
         cfg = self.config["model_trainer"]

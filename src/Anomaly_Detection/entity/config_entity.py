@@ -4,14 +4,6 @@ from typing import Tuple
 
 
 @dataclass(frozen=True)
-class DatasetConfig:
-    name: str
-    display_name: str
-    source_normal_dir: Path
-    source_abnormal_dir: Path
-
-
-@dataclass(frozen=True)
 class DataIngestionConfig:
     download_dir: Path
     kaggle_dataset: str

@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 import tensorflow as tf
 from pathlib import Path
@@ -10,6 +11,8 @@ from dataclasses import dataclass, field
 from typing import Optional, Dict, Tuple
 from Anomaly_Detection.entity.config_entity import ModelEvaluationConfig
 from Anomaly_Detection.constant import IMG_SHAPE, LATENT_DIM
+from Anomaly_Detection.logger import logger
+from Anomaly_Detection.exception import AnomalyDetectionException
 
 
 @dataclass
@@ -39,8 +42,11 @@ class ModelEvaluator:
     # ── Anomaly score methods ─────────────────────────────────────────────────
 
     def compute_scores_autoencoder(self, model: Model, x_test: np.ndarray) -> np.ndarray:
-        reconstructed = model.predict(x_test, verbose=0)
-        return np.mean(np.square(x_test - reconstructed), axis=tuple(range(1, x_test.ndim)))
+        try:
+            reconstructed = model.predict(x_test, verbose=0)
+            return np.mean(np.square(x_test - reconstructed), axis=tuple(range(1, x_test.ndim)))
+        except Exception as e:
+            raise AnomalyDetectionException(e, sys) from e
 
     def compute_scores_cvae(
         self, model: Model, x_test: np.ndarray, conditions: np.ndarray
@@ -139,39 +145,42 @@ class ModelEvaluator:
         y_test: np.ndarray,
         n_bootstrap: int = 1000,
     ) -> EvaluationResult:
-        fpr, tpr, thresholds = roc_curve(y_test, anomaly_scores)
-        roc_auc = auc(fpr, tpr)
+        try:
+            fpr, tpr, thresholds = roc_curve(y_test, anomaly_scores)
+            roc_auc = auc(fpr, tpr)
 
-        pr_precision, pr_recall, _ = precision_recall_curve(y_test, anomaly_scores)
-        ap = average_precision_score(y_test, anomaly_scores)
+            pr_precision, pr_recall, _ = precision_recall_curve(y_test, anomaly_scores)
+            ap = average_precision_score(y_test, anomaly_scores)
 
-        best_idx = int(np.argmax(tpr - fpr))
-        threshold = float(thresholds[best_idx])
+            best_idx = int(np.argmax(tpr - fpr))
+            threshold = float(thresholds[best_idx])
 
-        y_pred = (anomaly_scores >= threshold).astype(int)
-        cm = confusion_matrix(y_test, y_pred)
-        tn, fp, fn, tp = cm.ravel() if cm.size == 4 else (0, 0, 0, 0)
+            y_pred = (anomaly_scores >= threshold).astype(int)
+            cm = confusion_matrix(y_test, y_pred)
+            tn, fp, _, _ = cm.ravel() if cm.size == 4 else (0, 0, 0, 0)
 
-        ci_bounds = self.compute_confidence_intervals(anomaly_scores, y_test, n_bootstrap)
+            ci_bounds = self.compute_confidence_intervals(anomaly_scores, y_test, n_bootstrap)
 
-        return EvaluationResult(
-            auc_roc=roc_auc,
-            average_precision=ap,
-            accuracy=accuracy_score(y_test, y_pred),
-            precision=precision_score(y_test, y_pred, zero_division=0),
-            recall=recall_score(y_test, y_pred, zero_division=0),
-            f1=f1_score(y_test, y_pred, zero_division=0),
-            specificity=tn / (tn + fp) if (tn + fp) > 0 else 0.0,
-            threshold=threshold,
-            confusion_mat=cm,
-            fpr=fpr,
-            tpr=tpr,
-            pr_precision=pr_precision,
-            pr_recall=pr_recall,
-            anomaly_scores=anomaly_scores,
-            y_test=y_test,
-            ci=ci_bounds,
-        )
+            return EvaluationResult(
+                auc_roc=roc_auc,
+                average_precision=ap,
+                accuracy=accuracy_score(y_test, y_pred),
+                precision=precision_score(y_test, y_pred, zero_division=0),
+                recall=recall_score(y_test, y_pred, zero_division=0),
+                f1=f1_score(y_test, y_pred, zero_division=0),
+                specificity=tn / (tn + fp) if (tn + fp) > 0 else 0.0,
+                threshold=threshold,
+                confusion_mat=cm,
+                fpr=fpr,
+                tpr=tpr,
+                pr_precision=pr_precision,
+                pr_recall=pr_recall,
+                anomaly_scores=anomaly_scores,
+                y_test=y_test,
+                ci=ci_bounds,
+            )
+        except Exception as e:
+            raise AnomalyDetectionException(e, sys) from e
 
     # ── Save / print ──────────────────────────────────────────────────────────
 
@@ -196,7 +205,7 @@ class ModelEvaluator:
             f.write(f"F1-Score:          {result.f1:.4f}{_ci('f1')}\n")
             f.write(f"Specificity:       {result.specificity:.4f}\n")
             f.write(f"Threshold:         {result.threshold:.6f}\n")
-        print(f"Metrics saved → {path}")
+        logger.info(f"Metrics saved → {path}")
 
     def print_metrics(self, result: EvaluationResult, model_name: str):
         def _ci(key):
@@ -205,11 +214,11 @@ class ModelEvaluator:
                 return f" [{lo:.4f}, {hi:.4f}]"
             return ""
 
-        print(f"\n── {model_name} ──────────────────────────────")
-        print(f"  AUC-ROC:           {result.auc_roc:.4f}{_ci('auc_roc')}")
-        print(f"  Average Precision: {result.average_precision:.4f}")
-        print(f"  Accuracy:          {result.accuracy:.4f}{_ci('accuracy')}")
-        print(f"  Precision:         {result.precision:.4f}{_ci('precision')}")
-        print(f"  Recall:            {result.recall:.4f}{_ci('recall')}")
-        print(f"  F1-Score:          {result.f1:.4f}{_ci('f1')}")
-        print(f"  Specificity:       {result.specificity:.4f}")
+        logger.info(f"── {model_name} ──────────────────────────────")
+        logger.info(f"  AUC-ROC:           {result.auc_roc:.4f}{_ci('auc_roc')}")
+        logger.info(f"  Average Precision: {result.average_precision:.4f}")
+        logger.info(f"  Accuracy:          {result.accuracy:.4f}{_ci('accuracy')}")
+        logger.info(f"  Precision:         {result.precision:.4f}{_ci('precision')}")
+        logger.info(f"  Recall:            {result.recall:.4f}{_ci('recall')}")
+        logger.info(f"  F1-Score:          {result.f1:.4f}{_ci('f1')}")
+        logger.info(f"  Specificity:       {result.specificity:.4f}")

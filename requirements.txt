@@ -23,4 +23,9 @@ Flask==3.0.3
 kaggle==2.2.3
 python-dotenv==1.0.1
 
+# Experiment tracking
+mlflow==2.22.5
+dagshub==0.7.0
+protobuf==4.25.5
+
 -e .

@@ -1,4 +1,5 @@
 import os
+import sys
 import glob
 import random
 import numpy as np
@@ -7,6 +8,8 @@ from sklearn.model_selection import train_test_split
 from typing import List, Tuple
 from pathlib import Path
 from Anomaly_Detection.entity.config_entity import DataTransformationConfig
+from Anomaly_Detection.logger import logger
+from Anomaly_Detection.exception import AnomalyDetectionException
 
 
 class DataTransformation:
@@ -25,16 +28,13 @@ class DataTransformation:
 
     def _augment(self, img: Image.Image) -> Image.Image:
         w, h = img.size
-        # Flip
         if random.random() > 0.5:
             img = img.transpose(Image.FLIP_LEFT_RIGHT)
         if random.random() > 0.5:
             img = img.transpose(Image.FLIP_TOP_BOTTOM)
-        # Translation (up to 10% of image dimensions)
         tx = int(random.uniform(-0.1, 0.1) * w)
         ty = int(random.uniform(-0.1, 0.1) * h)
         img = img.transform(img.size, Image.AFFINE, (1, 0, -tx, 0, 1, -ty))
-        # Scaling (0.8–1.2), crop or pad back to original size
         scale = random.uniform(0.8, 1.2)
         new_w, new_h = int(w * scale), int(h * scale)
         img = img.resize((new_w, new_h), Image.BILINEAR)
@@ -57,7 +57,6 @@ class DataTransformation:
         if len(paths) >= target:
             selected = rng.sample(paths, target)
             return [self._preprocess(self._load_image(p)) for p in selected]
-        # Pre-resize to img_size so augmentation runs on small images
         small: List[Image.Image] = []
         for p in paths:
             try:
@@ -71,46 +70,50 @@ class DataTransformation:
         return result
 
     def initiate(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        root = Path(self.config.root_dir)
-        x_train_path = root / "x_train.npy"
+        try:
+            root = Path(self.config.root_dir)
+            x_train_path = root / "x_train.npy"
 
-        if x_train_path.exists():
-            print(f"Loading cached data from {root}")
-            x_train = np.load(root / "x_train.npy")
-            x_test  = np.load(root / "x_test.npy")
-            y_test  = np.load(root / "y_test.npy")
-            print(f"Train: {x_train.shape}  |  Test: {x_test.shape}  |  Labels: {y_test.shape}")
+            if x_train_path.exists():
+                logger.info(f"Loading cached data from {root}")
+                x_train = np.load(root / "x_train.npy")
+                x_test  = np.load(root / "x_test.npy")
+                y_test  = np.load(root / "y_test.npy")
+                logger.info(f"Train: {x_train.shape}  |  Test: {x_test.shape}  |  Labels: {y_test.shape}")
+                return x_train, x_test, y_test
+
+            normal_paths   = self._collect_paths(str(self.config.normal_dir))
+            abnormal_paths = self._collect_paths(str(self.config.abnormal_dir))
+
+            if len(normal_paths) == 0:
+                logger.warning(f"No images in {self.config.normal_dir} — using dummy data.")
+                h, w = self.config.img_size
+                normal_arr   = np.random.rand(self.config.dummy_normal_samples,   h, w).astype(np.float32)
+                abnormal_arr = np.random.rand(self.config.dummy_abnormal_samples, h, w).astype(np.float32)
+            else:
+                logger.info(f"Normal: {len(normal_paths)} images  |  Abnormal: {len(abnormal_paths)} images")
+                logger.info("Applying augmentation and preprocessing...")
+                normal_arr   = np.array(self._reach_target(normal_paths,   self.config.target_normal))
+                abnormal_arr = np.array(self._reach_target(abnormal_paths, self.config.target_abnormal))
+
+            x_train, x_test_normal = train_test_split(
+                normal_arr,
+                test_size=self.config.test_size,
+                random_state=self.config.random_state,
+            )
+            x_test = np.concatenate([x_test_normal, abnormal_arr])
+            y_test = np.concatenate([
+                np.zeros(len(x_test_normal), dtype=np.float32),
+                np.ones(len(abnormal_arr),   dtype=np.float32),
+            ])
+
+            root.mkdir(parents=True, exist_ok=True)
+            np.save(root / "x_train.npy", x_train)
+            np.save(root / "x_test.npy",  x_test)
+            np.save(root / "y_test.npy",  y_test)
+            logger.info(f"Saved transformed data to {root}")
+            logger.info(f"Train: {x_train.shape}  |  Test: {x_test.shape}  |  Labels: {y_test.shape}")
             return x_train, x_test, y_test
 
-        normal_paths   = self._collect_paths(str(self.config.normal_dir))
-        abnormal_paths = self._collect_paths(str(self.config.abnormal_dir))
-
-        if len(normal_paths) == 0:
-            print(f"No images in {self.config.normal_dir} — using dummy data.")
-            h, w = self.config.img_size
-            normal_arr   = np.random.rand(self.config.dummy_normal_samples,   h, w).astype(np.float32)
-            abnormal_arr = np.random.rand(self.config.dummy_abnormal_samples, h, w).astype(np.float32)
-        else:
-            print(f"Normal: {len(normal_paths)} images  |  Abnormal: {len(abnormal_paths)} images")
-            normal_arr   = np.array(self._reach_target(normal_paths,   self.config.target_normal))
-            abnormal_arr = np.array(self._reach_target(abnormal_paths, self.config.target_abnormal))
-
-        # 80% normal → train, 20% normal + all abnormal → test
-        x_train, x_test_normal = train_test_split(
-            normal_arr,
-            test_size=self.config.test_size,
-            random_state=self.config.random_state,
-        )
-        x_test = np.concatenate([x_test_normal, abnormal_arr])
-        y_test = np.concatenate([
-            np.zeros(len(x_test_normal), dtype=np.float32),
-            np.ones(len(abnormal_arr),   dtype=np.float32),
-        ])
-
-        root.mkdir(parents=True, exist_ok=True)
-        np.save(root / "x_train.npy", x_train)
-        np.save(root / "x_test.npy",  x_test)
-        np.save(root / "y_test.npy",  y_test)
-        print(f"Saved to {root}")
-        print(f"Train: {x_train.shape}  |  Test: {x_test.shape}  |  Labels: {y_test.shape}")
-        return x_train, x_test, y_test
+        except Exception as e:
+            raise AnomalyDetectionException(e, sys) from e

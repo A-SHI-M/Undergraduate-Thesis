@@ -1,5 +1,8 @@
 artifacts_root: artifacts
 
+mlflow:
+  experiment_name: Anomaly_Detection
+
 data_ingestion:
   download_dir: Datasets/{dataset}
   datasets:
@@ -27,8 +30,8 @@ data_transformation:
       abnormal_subdir: broken
 
 model_trainer:
-  root_dir: artifacts/{dataset}/model_trainer
-  models_dir: artifacts/{dataset}/model_trainer/saved_models
+  root_dir: artifacts/model_trainer/{dataset}
+  models_dir: artifacts/model_trainer/{dataset}/saved_models
   extra_models_dir: trainedModels/{dataset}
 
 model_evaluation:

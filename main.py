@@ -1,110 +1,62 @@
-import logging
-from pathlib import Path
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="[%(asctime)s] %(levelname)s — %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
-logger = logging.getLogger(__name__)
-
+import sys
+from Anomaly_Detection.logger import logger
+from Anomaly_Detection.exception import AnomalyDetectionException
+from Anomaly_Detection.config.configuaration import ConfigurationManager
 from Anomaly_Detection.pipeline.stage_01_data_ingestion import DataIngestionPipeline
 from Anomaly_Detection.pipeline.stage_02_data_transformation import DataTransformationPipeline
 from Anomaly_Detection.pipeline.stage_03_model_training import TrainingPipeline
-from Anomaly_Detection.utils.visualizations import Visualizer
-from Anomaly_Detection.config.configuaration import ConfigurationManager
+from Anomaly_Detection.pipeline.stage_04_model_evaluation import EvaluationPipeline
 
 
 def run_dataset(dataset_name: str):
-    logger.info(f"{'='*60}")
-    logger.info(f"Dataset: {dataset_name}")
-    logger.info(f"{'='*60}")
+    try:
+        logger.info(f"{'='*60}")
+        logger.info(f"Dataset: {dataset_name}")
+        logger.info(f"{'='*60}")
 
-    # Stage 1 — Download raw data
-    logger.info(">>>>>> Stage 1: Data Ingestion <<<<<<")
-    DataIngestionPipeline(dataset_name=dataset_name).run()
-    logger.info(">>>>>> Stage 1 complete <<<<<<")
+        logger.info(">>>>>> Stage 1: Data Ingestion <<<<<<")
+        DataIngestionPipeline(dataset_name=dataset_name).run()
+        logger.info(">>>>>> Stage 1 complete <<<<<<\n")
 
-    # Stage 2 — Transform & save processed data
-    logger.info(">>>>>> Stage 2: Data Transformation <<<<<<")
-    DataTransformationPipeline(dataset_name=dataset_name).run()
-    logger.info(">>>>>> Stage 2 complete <<<<<<")
+        logger.info(">>>>>> Stage 2: Data Transformation <<<<<<")
+        DataTransformationPipeline(dataset_name=dataset_name).run()
+        logger.info(">>>>>> Stage 2 complete <<<<<<\n")
 
-    # Stage 3 — Train & evaluate all models
-    logger.info(">>>>>> Stage 3: Training all models <<<<<<")
-    pipeline = TrainingPipeline(dataset_name=dataset_name)
-    cfg = pipeline.cfg
-    eval_cfg = cfg.get_model_evaluation_config()
-    viz = Visualizer()
+        logger.info(">>>>>> Stage 3: Model Training <<<<<<")
+        training = TrainingPipeline(dataset_name=dataset_name)
+        training.run_fc_ae()
+        training.run_cnn_ae()
+        training.run_vae()
+        training.run_beta_vae()
+        training.run_cvae()
+        training.run_vqvae()
+        training.run_ganomaly()
+        training.run_fanogan()
+        training.run_normal_bigan()
+        training.run_bigan(variant="full")
+        training.run_ablation()
+        logger.info(">>>>>> Stage 3 complete <<<<<<\n")
 
-    _, x_test, y_test = pipeline._load_data()
-    model_store = {}
-    results = {}
+        logger.info(">>>>>> Stage 4: Model Evaluation <<<<<<")
+        EvaluationPipeline(dataset_name=dataset_name).run()
+        logger.info(">>>>>> Stage 4 complete <<<<<<\n")
 
-    logger.info("Training FC-AE")
-    results["FC-AE"] = pipeline.run_fc_ae()
-
-    logger.info("Training CNN-AE")
-    results["CNN-AE"] = pipeline.run_cnn_ae()
-
-    logger.info("Training VAE")
-    results["VAE"] = pipeline.run_vae()
-
-    logger.info("Training Beta-VAE")
-    results["Beta-VAE"] = pipeline.run_beta_vae()
-
-    logger.info("Training CVAE")
-    results["CVAE"] = pipeline.run_cvae()
-
-    logger.info("Training VQ-VAE")
-    results["VQ-VAE"] = pipeline.run_vqvae()
-
-    logger.info("Training Normal BiGAN")
-    results["BiGAN"] = pipeline.run_normal_bigan()
-
-    logger.info("Training GANomaly")
-    results["GANomaly"] = pipeline.run_ganomaly()
-
-    logger.info("Training f-AnoGAN")
-    results["f-AnoGAN"] = pipeline.run_anogan()
-
-    logger.info("Training Improved BiGAN")
-    results["Improved-BiGAN"] = pipeline.run_bigan(variant="full")
-
-    logger.info(">>>>>> Stage 3 complete <<<<<<")
-
-    # Stage 4 — Overall comparison plots
-    logger.info(">>>>>> Stage 4: Comparison plots <<<<<<")
-    comp_dir = Path(eval_cfg.comparison_dir)
-    comp_dir.mkdir(parents=True, exist_ok=True)
-    viz.plot_comparison(results, comp_dir)
-    viz.plot_roc_comparison(results, comp_dir)
-    logger.info(">>>>>> Stage 4 complete <<<<<<")
-
-    # Stage 5 — T-SNE latent space
-    logger.info(">>>>>> Stage 5: T-SNE latent space <<<<<<")
-    pipeline.run_tsne(model_store, x_test, y_test)
-    logger.info(">>>>>> Stage 5 complete <<<<<<")
-
-    # Stage 6 — Ablation study
-    logger.info(">>>>>> Stage 6: Ablation study <<<<<<")
-    pipeline.run_ablation()
-    logger.info(">>>>>> Stage 6 complete <<<<<<")
-
-    logger.info(f"Results saved to resultAnalysis/{cfg.display_name}/ "
-                f"and ablationAnalysis/{cfg.display_name}/")
+    except Exception as e:
+        raise AnomalyDetectionException(e, sys) from e
 
 
 def main():
-    # Discover all configured datasets from config.yaml
-    root_cfg = ConfigurationManager()
-    all_datasets = list(root_cfg.config["data_ingestion"]["datasets"].keys())
-    logger.info(f"Configured datasets: {all_datasets}")
+    try:
+        root_cfg = ConfigurationManager()
+        all_datasets = list(root_cfg.config["data_ingestion"]["datasets"].keys())
+        logger.info(f"Configured datasets: {all_datasets}")
 
-    for dataset_name in all_datasets:
-        run_dataset(dataset_name)
+        for dataset_name in all_datasets:
+            run_dataset(dataset_name)
 
-    logger.info("All datasets complete.")
+        logger.info("All datasets complete.")
+    except Exception as e:
+        raise AnomalyDetectionException(e, sys) from e
 
 
 if __name__ == "__main__":

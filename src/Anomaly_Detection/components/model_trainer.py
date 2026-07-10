@@ -1,9 +1,29 @@
+import gc
+import sys
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras.optimizers import Adam
 from Anomaly_Detection.entity.config_entity import ModelTrainerConfig, BiGANTrainerConfig
-from Anomaly_Detection.constant import IMG_SHAPE, LATENT_DIM
+from Anomaly_Detection.constant import LATENT_DIM
+from Anomaly_Detection.logger import logger
+from Anomaly_Detection.exception import AnomalyDetectionException
+
+
+def _scalar(val) -> float:
+    return float(val[0]) if hasattr(val, '__len__') else float(val)
+
+
+def _save_model(model: Model, path) -> None:
+    from pathlib import Path
+    p = Path(path)
+    if p.exists():
+        p.unlink()
+    gc.collect()
+    model.save(str(p))
+    logger.info(f"Saved {p.stem} → {p}")
+
+
 from Anomaly_Detection.Models.ImprovedBIGAN import ssim_loss
 
 
@@ -27,8 +47,6 @@ class fAnoGANTrainerConfig:
 
 
 class ModelTrainer:
-    """Trains any Keras autoencoder / VAE on normal images."""
-
     def __init__(self, config: ModelTrainerConfig):
         self.config = config
 
@@ -39,20 +57,21 @@ class ModelTrainer:
         model_name: str,
         y_train: np.ndarray = None,
     ) -> tf.keras.callbacks.History:
-        target = y_train if y_train is not None else x_train
-        history = model.fit(
-            x_train,
-            target,
-            epochs=self.config.epochs,
-            batch_size=self.config.batch_size,
-            validation_split=self.config.validation_split,
-            verbose=1,
-        )
-        for save_dir in (self.config.models_dir, self.config.extra_models_dir):
-            path = save_dir / f"{model_name}.keras"
-            model.save(str(path))
-            print(f"Saved {model_name} → {path}")
-        return history
+        try:
+            target = y_train if y_train is not None else x_train
+            history = model.fit(
+                x_train,
+                target,
+                epochs=self.config.epochs,
+                batch_size=self.config.batch_size,
+                validation_split=self.config.validation_split,
+                verbose=1,
+            )
+            for save_dir in (self.config.models_dir, self.config.extra_models_dir):
+                _save_model(model, save_dir / f"{model_name}.keras")
+            return history
+        except Exception as e:
+            raise AnomalyDetectionException(e, sys) from e
 
 
 class BiGANTrainer:
@@ -87,7 +106,7 @@ class BiGANTrainer:
         batch_size = 16   # kept fixed; expose via config if needed
 
         # ── Phase 1: pre-train reconstruction ────────────────────────────────
-        print(f"\nPhase 1: pre-training reconstruction ({self.config.pretrain_epochs} epochs)")
+        logger.info(f"Phase 1: pre-training reconstruction ({self.config.pretrain_epochs} epochs)")
         for epoch in range(self.config.pretrain_epochs):
             idx = np.random.randint(0, n, batch_size)
             real_tensor = tf.convert_to_tensor(
@@ -100,10 +119,10 @@ class BiGANTrainer:
             recon_opt.apply_gradients(zip(grads, reconstruction_model.trainable_variables))
             losses["pretrain_recon"].append(float(loss))
             if (epoch + 1) % 10 == 0:
-                print(f"  [P1 {epoch+1}/{self.config.pretrain_epochs}] loss={loss:.4f}")
+                logger.info(f"  [P1 {epoch+1}/{self.config.pretrain_epochs}] loss={loss:.4f}")
 
         # ── Phase 2: joint BiGAN + reconstruction ────────────────────────────
-        print(f"\nPhase 2: joint training ({self.config.bigan_epochs} epochs)")
+        logger.info(f"Phase 2: joint training ({self.config.bigan_epochs} epochs)")
         real_labels = np.ones((batch_size, 1))
         fake_labels = np.zeros((batch_size, 1))
 
@@ -119,7 +138,7 @@ class BiGANTrainer:
                 d_real = discriminator.train_on_batch([real_imgs, real_z], real_labels)
                 d_fake = discriminator.train_on_batch([fake_imgs, z_noise], fake_labels)
                 discriminator.trainable = False
-                losses["bigan"].append(float(0.5 * (d_real + d_fake)))
+                losses["bigan"].append(0.5 * (_scalar(d_real) + _scalar(d_fake)))
 
             z_noise = np.random.normal(0, 1, (batch_size, latent_dim))
             bigan.train_on_batch([z_noise, real_imgs], [real_labels, fake_labels])
@@ -134,9 +153,12 @@ class BiGANTrainer:
             losses["recon"].append(float(r_loss))
 
             if (epoch + 1) % 50 == 0:
-                print(f"  [P2 {epoch+1}/{self.config.bigan_epochs}] recon={r_loss:.4f}")
+                logger.info(f"  [P2 {epoch+1}/{self.config.bigan_epochs}] recon={r_loss:.4f}")
 
-        self._save(encoder, generator, discriminator, prefix)
+        try:
+            self._save(encoder, generator, discriminator, prefix)
+        except Exception as e:
+            raise AnomalyDetectionException(e, sys) from e
         return losses
 
     def _save(self, encoder: Model, generator: Model, discriminator: Model, prefix: str = "bigan"):
@@ -146,9 +168,7 @@ class BiGANTrainer:
             (discriminator, f"{prefix}_discriminator"),
         ]:
             for save_dir in (self.config.models_dir, self.config.extra_models_dir):
-                path = save_dir / f"{name}.keras"
-                model.save(str(path))
-                print(f"Saved {name} → {path}")
+                _save_model(model, save_dir / f"{name}.keras")
 
 
 class GANomalyTrainer:
@@ -169,7 +189,7 @@ class GANomalyTrainer:
         disc_opt = Adam(learning_rate=self.config.learning_rate, beta_1=0.5)
         losses = {"disc": [], "ganomaly": []}
 
-        print(f"\nTraining GANomaly ({self.config.epochs} epochs)")
+        logger.info(f"Training GANomaly ({self.config.epochs} epochs)")
         for epoch in range(self.config.epochs):
             idx = np.random.randint(0, n, batch_size)
             real_imgs = x_train[idx][..., np.newaxis].astype(np.float32)
@@ -183,7 +203,7 @@ class GANomalyTrainer:
             d_real = discriminator.train_on_batch(real_imgs, real_labels)
             d_fake = discriminator.train_on_batch(fake_imgs, fake_labels)
             discriminator.trainable = False
-            losses["disc"].append(float(0.5 * (d_real + d_fake)))
+            losses["disc"].append(0.5 * (_scalar(d_real) + _scalar(d_fake)))
 
             g_loss = ganomaly_model.train_on_batch(
                 real_imgs,
@@ -192,14 +212,15 @@ class GANomalyTrainer:
             losses["ganomaly"].append(float(g_loss[0]) if isinstance(g_loss, list) else float(g_loss))
 
             if (epoch + 1) % 50 == 0:
-                print(f"  [{epoch+1}/{self.config.epochs}] d={losses['disc'][-1]:.4f}")
+                logger.info(f"  [{epoch+1}/{self.config.epochs}] d={losses['disc'][-1]:.4f}")
 
-        for model, name in [(encoder1, "ganomaly_encoder1"), (generator, "ganomaly_generator"),
-                            (encoder2, "ganomaly_encoder2"), (discriminator, "ganomaly_discriminator")]:
-            for save_dir in (self.config.models_dir, self.config.extra_models_dir):
-                path = save_dir / f"{name}.keras"
-                model.save(str(path))
-                print(f"Saved {name} → {path}")
+        try:
+            for model, name in [(encoder1, "ganomaly_encoder1"), (generator, "ganomaly_generator"),
+                                (encoder2, "ganomaly_encoder2"), (discriminator, "ganomaly_discriminator")]:
+                for save_dir in (self.config.models_dir, self.config.extra_models_dir):
+                    _save_model(model, save_dir / f"{name}.keras")
+        except Exception as e:
+            raise AnomalyDetectionException(e, sys) from e
         return losses
 
 
@@ -222,7 +243,7 @@ class fAnoGANTrainer:
         losses = {"disc": [], "gen": [], "encoder": []}
 
         # ── Phase 1: Train DCGAN on normal images ────────────────────────────
-        print(f"\nf-AnoGAN Phase 1: training DCGAN ({self.config.epochs} epochs)")
+        logger.info(f"f-AnoGAN Phase 1: training DCGAN ({self.config.epochs} epochs)")
         for epoch in range(self.config.epochs):
             idx = np.random.randint(0, n, batch_size)
             real_imgs = x_train[idx][..., np.newaxis].astype(np.float32)
@@ -242,10 +263,10 @@ class fAnoGANTrainer:
             losses["gen"].append(float(g_loss))
 
             if (epoch + 1) % 50 == 0:
-                print(f"  [P1 {epoch+1}/{self.config.epochs}] d={losses['disc'][-1]:.4f} g={g_loss:.4f}")
+                logger.info(f"  [P1 {epoch+1}/{self.config.epochs}] d={losses['disc'][-1]:.4f} g={g_loss:.4f}")
 
         # ── Phase 2: Train encoder with GAN frozen ───────────────────────────
-        print(f"\nf-AnoGAN Phase 2: training encoder ({self.config.encoder_epochs} epochs)")
+        logger.info(f"f-AnoGAN Phase 2: training encoder ({self.config.encoder_epochs} epochs)")
         generator.trainable = False
         discriminator.trainable = False
         enc_opt = Adam(learning_rate=self.config.learning_rate, beta_1=0.5)
@@ -276,18 +297,19 @@ class fAnoGANTrainer:
             losses["encoder"].append(float(enc_loss))
 
             if (epoch + 1) % 50 == 0:
-                print(f"  [P2 {epoch+1}/{self.config.encoder_epochs}] enc={float(enc_loss):.4f}")
+                logger.info(f"  [P2 {epoch+1}/{self.config.encoder_epochs}] enc={float(enc_loss):.4f}")
 
         generator.trainable = True
         discriminator.trainable = True
 
-        for model, name in [
-            (generator, "fanogan_generator"),
-            (discriminator, "fanogan_discriminator"),
-            (encoder, "fanogan_encoder"),
-        ]:
-            for save_dir in (self.config.models_dir, self.config.extra_models_dir):
-                path = save_dir / f"{name}.keras"
-                model.save(str(path))
-                print(f"Saved {name} → {path}")
+        try:
+            for model, name in [
+                (generator, "fanogan_generator"),
+                (discriminator, "fanogan_discriminator"),
+                (encoder, "fanogan_encoder"),
+            ]:
+                for save_dir in (self.config.models_dir, self.config.extra_models_dir):
+                    _save_model(model, save_dir / f"{name}.keras")
+        except Exception as e:
+            raise AnomalyDetectionException(e, sys) from e
         return losses
