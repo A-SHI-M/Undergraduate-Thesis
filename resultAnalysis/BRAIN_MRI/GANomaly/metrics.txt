@@ -1,0 +1,9 @@
+Model: GANomaly
+AUC-ROC:           0.7332 [0.6981, 0.7656]
+Average Precision: 0.7011
+Accuracy:          0.6837 [0.6500, 0.7125]
+Precision:         0.6485 [0.6047, 0.6876]
+Recall:            0.8025 [0.7626, 0.8378]
+F1-Score:          0.7173 [0.6822, 0.7476]
+Specificity:       0.5650
+Threshold:         0.324504

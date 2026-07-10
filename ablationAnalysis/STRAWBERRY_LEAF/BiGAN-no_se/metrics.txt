@@ -1,0 +1,9 @@
+Model: BiGAN-no_se
+AUC-ROC:           0.5444 [0.5019, 0.5858]
+Average Precision: 0.4975
+Accuracy:          0.5825 [0.5487, 0.6175]
+Precision:         0.5630 [0.5223, 0.6072]
+Recall:            0.7375 [0.6931, 0.7805]
+F1-Score:          0.6385 [0.6004, 0.6748]
+Specificity:       0.4275
+Threshold:         0.218878

@@ -1,0 +1,9 @@
+Model: Improved-BiGAN
+AUC-ROC:           0.2664 [0.2341, 0.3009]
+Average Precision: 0.3634
+Accuracy:          0.5000 [0.4662, 0.5325]
+Precision:         0.0000 [0.0000, 0.0000]
+Recall:            0.0000 [0.0000, 0.0000]
+F1-Score:          0.0000 [0.0000, 0.0000]
+Specificity:       1.0000
+Threshold:         inf

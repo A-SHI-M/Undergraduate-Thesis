@@ -1,0 +1,9 @@
+Model: CNN-AE
+AUC-ROC:           0.5183 [0.4802, 0.5597]
+Average Precision: 0.4801
+Accuracy:          0.5663 [0.5337, 0.5988]
+Precision:         0.5519 [0.5117, 0.5927]
+Recall:            0.7050 [0.6608, 0.7468]
+F1-Score:          0.6191 [0.5808, 0.6526]
+Specificity:       0.4275
+Threshold:         0.021102

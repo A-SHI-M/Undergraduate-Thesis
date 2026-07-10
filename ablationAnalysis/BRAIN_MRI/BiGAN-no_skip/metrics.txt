@@ -1,0 +1,9 @@
+Model: BiGAN-no_skip
+AUC-ROC:           0.2668 [0.2345, 0.3016]
+Average Precision: 0.3636
+Accuracy:          0.5000 [0.4662, 0.5325]
+Precision:         0.0000 [0.0000, 0.0000]
+Recall:            0.0000 [0.0000, 0.0000]
+F1-Score:          0.0000 [0.0000, 0.0000]
+Specificity:       1.0000
+Threshold:         inf

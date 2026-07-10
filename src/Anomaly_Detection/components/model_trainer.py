@@ -21,7 +21,7 @@ def _save_model(model: Model, path) -> None:
         p.unlink()
     gc.collect()
     model.save(str(p))
-    logger.info(f"Saved {p.stem} → {p}")
+    logger.info(f"Saved {p.stem} -> {p}")
 
 
 from Anomaly_Detection.Models.ImprovedBIGAN import ssim_loss

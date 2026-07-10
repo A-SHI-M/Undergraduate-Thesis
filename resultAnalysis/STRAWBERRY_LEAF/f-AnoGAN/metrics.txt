@@ -1,0 +1,9 @@
+Model: f-AnoGAN
+AUC-ROC:           0.5466 [0.5073, 0.5868]
+Average Precision: 0.5049
+Accuracy:          0.5725 [0.5387, 0.6050]
+Precision:         0.5628 [0.5197, 0.6052]
+Recall:            0.6500 [0.6005, 0.6961]
+F1-Score:          0.6032 [0.5650, 0.6377]
+Specificity:       0.4950
+Threshold:         0.022260

@@ -1,0 +1,9 @@
+Model: VQ-VAE
+AUC-ROC:           0.4710 [0.4344, 0.5113]
+Average Precision: 0.4768
+Accuracy:          0.5025 [0.4675, 0.5387]
+Precision:         0.5020 [0.4587, 0.5438]
+Recall:            0.6425 [0.5959, 0.6877]
+F1-Score:          0.5636 [0.5261, 0.6013]
+Specificity:       0.3625
+Threshold:         0.101443
